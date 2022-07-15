@@ -7,18 +7,17 @@ Usage:
     use `python DEC.py -h` for help.
 
 Author:
-    Xifeng Guo. 2017.1.30
+    Xifeng Guo. 2017.1.30  
 """
 
 from time import time
 import numpy as np
-import keras.backend as K
-from keras.engine.topology import Layer, InputSpec
-from keras.layers import Dense, Input
-from keras.models import Model
-from keras.optimizers import SGD
-from keras import callbacks
-from keras.initializers import VarianceScaling
+import tensorflow.keras.backend as K
+from tensorflow.keras.layers import Layer,InputSpec,Dense,Input
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import SGD
+from tensorflow.keras import callbacks
+from tensorflow.keras.initializers import VarianceScaling
 from sklearn.cluster import KMeans
 import metrics
 
@@ -158,7 +157,7 @@ class DEC(object):
                                           self.model.get_layer(
                                               'encoder_%d' % (int(len(self.model.layers) / 2) - 1)).output)
                     features = feature_model.predict(self.x)
-                    km = KMeans(n_clusters=len(np.unique(self.y)), n_init=20, n_jobs=4)
+                    km = KMeans(n_clusters=len(np.unique(self.y)), n_init=20)#, n_jobs=4)
                     y_pred = km.fit_predict(features)
                     # print()
                     print(' '*8 + '|==>  acc: %.4f,  nmi: %.4f  <==|'
@@ -271,27 +270,37 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--dataset', default='mnist',
-                        choices=['mnist', 'fmnist', 'usps', 'reuters10k', 'stl'])
-    parser.add_argument('--batch_size', default=256, type=int)
+                        choices=['euromds','mnist', 'fmnist', 'usps', 'reuters10k', 'stl'])
+    parser.add_argument('--batch_size', default=265, type=int)
     parser.add_argument('--maxiter', default=2e4, type=int)
-    parser.add_argument('--pretrain_epochs', default=None, type=int)
-    parser.add_argument('--update_interval', default=None, type=int)
+    parser.add_argument('--pretrain_epochs', default=300, type=int)
+    parser.add_argument('--update_interval', default=140, type=int)
     parser.add_argument('--tol', default=0.001, type=float)
     parser.add_argument('--ae_weights', default=None)
-    parser.add_argument('--save_dir', default='results')
+    parser.add_argument('--save_dir',default='out_dec')
+    parser.add_argument('--pretrain_optimizer',default='adam')
+    parser.add_argument('--n_clusters',default=6)
     args = parser.parse_args()
     print(args)
     import os
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
+    import json
+    with open(args.save_dir+'/config.json', 'w') as file:
+        json.dump(vars(args), file)
+
+
     # load dataset
     from datasets import load_data
     x, y = load_data(args.dataset)
-    n_clusters = len(np.unique(y))
+    n_clusters = args.n_clusters#len(np.unique(y))
 
     init = 'glorot_uniform'
-    pretrain_optimizer = 'adam'
+    pretrain_optimizer = args.pretrain_optimizer
+    update_interval=args.update_interval
+    pretrain_epochs = args.pretrain_epochs
+    
     # setting parameters
     if args.dataset == 'mnist' or args.dataset == 'fmnist':
         update_interval = 140
@@ -316,6 +325,15 @@ if __name__ == "__main__":
         update_interval = args.update_interval
     if args.pretrain_epochs is not None:
         pretrain_epochs = args.pretrain_epochs
+    
+    if args.dataset == 'euromds':
+        import json
+        x = json.load(open('euromds.json','r'))
+        x = np.array(x)
+        #if exclude_data_duplicates == True:
+            # exclude duplicate rows:
+        x = np.unique(x,axis=0)
+        y=None
 
     # prepare the DEC model
     dec = DEC(dims=[x.shape[-1], 500, 500, 2000, 10], n_clusters=n_clusters, init=init)
@@ -332,5 +350,5 @@ if __name__ == "__main__":
     dec.compile(optimizer=SGD(0.01, 0.9), loss='kld')
     y_pred = dec.fit(x, y=y, tol=args.tol, maxiter=args.maxiter, batch_size=args.batch_size,
                      update_interval=update_interval, save_dir=args.save_dir)
-    print('acc:', metrics.acc(y, y_pred))
+    #print('acc:', metrics.acc(y, y_pred))
     print('clustering time: ', (time() - t0))
