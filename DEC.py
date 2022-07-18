@@ -279,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument('--ae_weights', default=None)
     parser.add_argument('--save_dir',default='out_dec')
     parser.add_argument('--pretrain_optimizer',default='adam')
-    parser.add_argument('--n_clusters',default=6)
+    parser.add_argument('--n_clusters',default=10)
     args = parser.parse_args()
     print(args)
     import os

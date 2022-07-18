@@ -22,6 +22,8 @@ def acc(y_true, y_pred):
     w = np.zeros((D, D), dtype=np.int64)
     for i in range(y_pred.size):
         w[y_pred[i], y_true[i]] += 1
-    from sklearn.utils.linear_assignment_ import linear_assignment
-    ind = linear_assignment(w.max() - w)
+    #from sklearn.utils.linear_assignment_ import linear_assignment
+    from scipy.optimize import linear_sum_assignment
+    ind_to_change = linear_sum_assignment(w.max() - w)
+    ind = np.vstack([ind_to_change[0],ind_to_change[1]]).T
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
