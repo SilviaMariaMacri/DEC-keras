@@ -7,7 +7,7 @@ Usage:
     use `python DEC.py -h` for help.
 
 Author:
-    Xifeng Guo. 2017.1.30  
+    Xifeng Guo. 2017.1.30    
 """
 
 from time import time
@@ -276,8 +276,8 @@ if __name__ == "__main__":
     parser.add_argument('--pretrain_epochs', default=300, type=int)
     parser.add_argument('--update_interval', default=140, type=int)
     parser.add_argument('--tol', default=0.001, type=float)
-    parser.add_argument('--ae_weights', default=None)
-    parser.add_argument('--save_dir',default='out_dec')
+    parser.add_argument('--ae_weights', default='output_server/mnist0/ae_weights.h5')
+    parser.add_argument('--save_dir',default='prova')
     parser.add_argument('--pretrain_optimizer',default='adam')
     parser.add_argument('--n_clusters',default=10)
     args = parser.parse_args()
@@ -292,9 +292,10 @@ if __name__ == "__main__":
 
 
     # load dataset
-    from datasets import load_data
-    x, y = load_data(args.dataset)
-    n_clusters = args.n_clusters#len(np.unique(y))
+    if args.dataset=='mnist':
+        from datasets import load_mnist
+        x, y = load_mnist()
+        n_clusters = len(np.unique(y))
 
     init = 'glorot_uniform'
     pretrain_optimizer = args.pretrain_optimizer
@@ -334,6 +335,7 @@ if __name__ == "__main__":
             # exclude duplicate rows:
         x = np.unique(x,axis=0)
         y=None
+        n_clusters = args.n_clusters
 
     # prepare the DEC model
     dec = DEC(dims=[x.shape[-1], 500, 500, 2000, 10], n_clusters=n_clusters, init=init)
@@ -344,6 +346,7 @@ if __name__ == "__main__":
                      save_dir=args.save_dir)
     else:
         dec.autoencoder.load_weights(args.ae_weights)
+        
 
     dec.model.summary()
     t0 = time()
